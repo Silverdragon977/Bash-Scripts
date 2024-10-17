@@ -1,0 +1,17 @@
+#!/bin/bash
+# 10/17/24 made by Michael H
+# This bash file is used to maintain ubuntu os 
+# These commands update apt, install updates, and removes outdated files
+# This won't however update to the newest Ubuntu or install the paid updates
+
+# Update package list
+sudo apt update
+
+# Upgrade installed packages
+sudo apt upgrade -y
+
+# Clean up
+sudo apt autoremove -y
+sudo apt autoclean -y
+
+echo "Server updated successfully!"
