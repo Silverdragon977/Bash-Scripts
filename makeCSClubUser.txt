@@ -1,5 +1,5 @@
 #!/bin/bash
-# Script to add a user, move their home directory, and configure permissions
+# Script to add a user or update their permissions if they already exist, including files
 
 # Ask for the username if not provided as an argument
 if [ -z "$1" ]; then
@@ -13,12 +13,18 @@ fi
 read -p "Enter the home directory location (default is '/var/www/html/$USERNAME'): " HOMEDIR
 HOMEDIR=${HOMEDIR:-/var/www/html/$USERNAME}
 
-# Step 1: Create the user with the home directory
-sudo useradd -m -d $HOMEDIR -s /bin/bash $USERNAME
+# Check if the user already exists
+if id "$USERNAME" &>/dev/null; then
+    echo "User $USERNAME already exists. Updating permissions..."
+else
+    # Step 1: Create the user with the home directory if the user does not exist
+    echo "User $USERNAME does not exist. Creating the user..."
+    sudo useradd -m -d $HOMEDIR -s /bin/bash $USERNAME
 
-# Step 2: Set a password for the new user
-echo "Set password for user $USERNAME:"
-sudo passwd $USERNAME
+    # Step 2: Set a password for the new user
+    echo "Set password for user $USERNAME:"
+    sudo passwd $USERNAME
+fi
 
 # Step 3: Create the user's home directory (if necessary)
 sudo mkdir -p $HOMEDIR
@@ -33,10 +39,17 @@ sudo chmod 770 $HOMEDIR  # rwx for owner and group, no access for others
 if [ ! -f $HOMEDIR/index.php ]; then
     sudo touch $HOMEDIR/index.php
     sudo chmod 660 $HOMEDIR/index.php  # rw- for owner and group, no access for others
+else
+    echo "File index.php already exists, updating permissions..."
+    sudo chmod 660 $HOMEDIR/index.php
 fi
 
-# Step 7: Confirm the successful creation and permission setup
-echo "User $USERNAME created and permissions configured successfully."
+# Step 7: Go through the files in the home directory and update file permissions
+echo "Updating permissions for files in $HOMEDIR..."
+find $HOMEDIR -type f -exec sudo chmod 660 {} \;   # Set rw- for owner and group on files
+find $HOMEDIR -type d -exec sudo chmod 770 {} \;   # Set rwx for owner and group on directories
+
+# Step 8: Confirm the successful creation and permission setup
+echo "User $USERNAME is now configured with correct permissions."
 echo "Home directory: $HOMEDIR"
 echo "Permissions: rwx for owner, rw- for group, no access for others."
-
