@@ -1,10 +1,7 @@
 #!/bin/bash
-# 10/17/24 made for bemidjicsclub.om
-# This is a bash file that makes a user, moves and renames their home
-# directory while giving them the proper permissions to edit their own
-# home directory without letting anyone else but root edit
+# Script to add a user, move their home directory, and configure permissions
 
-# Check if a username is provided as an argument
+# Ask for the username if not provided as an argument
 if [ -z "$1" ]; then
     echo "No username provided."
     read -p "Please enter a username: " USERNAME
@@ -12,24 +9,34 @@ else
     USERNAME=$1
 fi
 
-# Step 1: Add a new user with a home directory
-sudo useradd -m -d /var/www/html/$USERNAME -s /bin/bash $USERNAME
+# Ask for the home directory location (default to /var/www/html/$USERNAME)
+read -p "Enter the home directory location (default is '/var/www/html/$USERNAME'): " HOMEDIR
+HOMEDIR=${HOMEDIR:-/var/www/html/$USERNAME}
+
+# Step 1: Create the user with the home directory
+sudo useradd -m -d $HOMEDIR -s /bin/bash $USERNAME
 
 # Step 2: Set a password for the new user
 echo "Set password for user $USERNAME:"
 sudo passwd $USERNAME
 
-# Step 3: Move user's default home directory files (if necessary)
-sudo mv /home/$USERNAME/* /var/www/html/$USERNAME/ 2>/dev/null
+# Step 3: Create the user's home directory (if necessary)
+sudo mkdir -p $HOMEDIR
 
-# Step 4: Set correct ownership for the user's directory
-sudo chown -R $USERNAME:www-data /var/www/html/$USERNAME
+# Step 4: Set correct ownership for the user's home directory and files (owner is the username)
+sudo chown -R $USERNAME:$USERNAME $HOMEDIR
 
-# Step 5: Set directory permissions
-sudo chmod 750 /var/www/html/$USERNAME
+# Step 5: Set permissions for the home directory
+sudo chmod 770 $HOMEDIR  # rwx for owner and group, no access for others
 
-# Step 6: Set permissions for the index.php file
-sudo touch /var/www/html/$USERNAME/index.php
-sudo chmod 640 /var/www/html/$USERNAME/index.php
+# Step 6: Set permissions for any files (e.g., index.php)
+if [ ! -f $HOMEDIR/index.php ]; then
+    sudo touch $HOMEDIR/index.php
+    sudo chmod 660 $HOMEDIR/index.php  # rw- for owner and group, no access for others
+fi
 
-echo "User $USERNAME created and configured successfully."
+# Step 7: Confirm the successful creation and permission setup
+echo "User $USERNAME created and permissions configured successfully."
+echo "Home directory: $HOMEDIR"
+echo "Permissions: rwx for owner, rw- for group, no access for others."
+
