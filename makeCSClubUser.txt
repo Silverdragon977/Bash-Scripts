@@ -15,27 +15,39 @@ HOMEDIR=${HOMEDIR:-/var/www/html/$USERNAME}
 
 # Check if the user already exists
 if id "$USERNAME" &>/dev/null; then
-    echo "User $USERNAME already exists. Updating permissions..."
+    # User exists, ask for confirmation to create the user again
+    read -p "User $USERNAME already exists. Do you want to update their permissions? (y/n): " CONFIRMATION
+    if [[ "$CONFIRMATION" != "y" && "$CONFIRMATION" != "Y" ]]; then
+        echo "Exiting without making changes."
+        exit 0
+    else
+        echo "Updating permissions for existing user $USERNAME..."
+    fi
 else
     # Step 1: Create the user with the home directory if the user does not exist
     echo "User $USERNAME does not exist. Creating the user..."
-    sudo useradd -m -d $HOMEDIR -s /bin/bash $USERNAME
 
-    # Step 2: Set a password for the new user
-    echo "Set password for user $USERNAME:"
-    sudo passwd $USERNAME
+    # Ask for password for the new user
+    read -sp "Enter the password for user $USERNAME: " PASSWORD
+    echo
+
+    # Create the user and set the password
+    sudo useradd -m -d $HOMEDIR -s /bin/bash $USERNAME
+    echo "$USERNAME:$PASSWORD" | sudo chpasswd  # Set the password using chpasswd
+
+    echo "User $USERNAME created successfully."
 fi
 
-# Step 3: Create the user's home directory (if necessary)
+# Step 2: Create the user's home directory (if necessary)
 sudo mkdir -p $HOMEDIR
 
-# Step 4: Set correct ownership for the user's home directory and files (owner is the username)
+# Step 3: Set correct ownership for the user's home directory and files (owner is the username)
 sudo chown -R $USERNAME:$USERNAME $HOMEDIR
 
-# Step 5: Set permissions for the home directory
+# Step 4: Set permissions for the home directory
 sudo chmod 770 $HOMEDIR  # rwx for owner and group, no access for others
 
-# Step 6: Set permissions for any files (e.g., index.php)
+# Step 5: Set permissions for any files (e.g., index.php)
 if [ ! -f $HOMEDIR/index.php ]; then
     sudo touch $HOMEDIR/index.php
     sudo chmod 660 $HOMEDIR/index.php  # rw- for owner and group, no access for others
@@ -44,12 +56,12 @@ else
     sudo chmod 660 $HOMEDIR/index.php
 fi
 
-# Step 7: Go through the files in the home directory and update file permissions
+# Step 6: Go through the files in the home directory and update file permissions
 echo "Updating permissions for files in $HOMEDIR..."
 find $HOMEDIR -type f -exec sudo chmod 660 {} \;   # Set rw- for owner and group on files
 find $HOMEDIR -type d -exec sudo chmod 770 {} \;   # Set rwx for owner and group on directories
 
-# Step 8: Confirm the successful creation and permission setup
+# Step 7: Confirm the successful creation and permission setup
 echo "User $USERNAME is now configured with correct permissions."
 echo "Home directory: $HOMEDIR"
 echo "Permissions: rwx for owner, rw- for group, no access for others."
